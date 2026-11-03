@@ -7,7 +7,7 @@ const anthropic = new Anthropic({
 });
 
 // Guardrail A: Maximum character threshold to prevent wallet-drain attacks
-const MAX_NOTE_LENGTH = 500;
+const MAX_NOTE_LENGTH = 1000;
 
 // Layer 1: PHI Scrubbing Guardrail
 function redactPHI(rawNote: string): string {

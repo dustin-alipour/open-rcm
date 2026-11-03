@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenRCM | Pre-Bill Defense Engine
+
+An open-source prototype designed to eliminate outpatient behavioral health claim denials and audit clawbacks before submission. 
+
+OpenRCM pairs LLM-powered clinical extraction with deterministic CMS clearinghouse rules to identify coding discrepancies, enforce minimum time thresholds, and provide human-in-the-loop remediation.
+
+---
+
+## The Problem: Downcode & Clawback Risk in Outpatient Billing
+
+In outpatient psychotherapy billing, time-based CPT codes (e.g., 90832, 90834, 90837) are strictly governed by CMS and commercial payer time minimums:
+* CPT 90837 requires a minimum of 53 documented minutes.
+* CPT 90834 covers encounters between 38 and 52 documented minutes.
+* CPT 90832 covers encounters between 16 and 37 documented minutes.
+* Encounters under 16 minutes fall below the billable psychotherapy threshold.
+
+When clinicians select 90837 for a 45-minute session, clearinghouses flag the claim or commercial payers claw back reimbursement during post-payment audits, creating revenue leakage and administrative overhead.
+
+---
+
+## Architectural Approach
+
+Rather than allowing a probabilistic LLM to make direct compliance and billing decisions, OpenRCM decouples extraction from adjudication:
+
+1. Server-Side De-Identification & Guardrails:
+   * Redacts common PHI/PII patterns before requests leave the server.
+   * Clamps payload size to prevent compute drain.
+   * Encapsulates raw input in XML tags to guard against prompt injection.
+
+2. Structured Extraction (Claude + Zod):
+   * Extracts session duration, modality, and clinical interventions.
+   * Enforces a strict JSON schema contract to eliminate conversational filler.
+   * Returns a confidence score for extraction quality.
+
+3. Deterministic Payer Engine (TypeScript):
+   * Hard-coded CMS and commercial time rules calculate audit readiness.
+   * Quantifies downcoding risk and revenue variance.
+   * Provides 1-click human-in-the-loop remediation before ANSI X12 837P clearinghouse queuing.
+
+---
+
+## Tech Stack
+
+* Framework: Next.js (App Router, TypeScript)
+* Styling: Tailwind CSS
+* Extraction: Anthropic Claude API (@anthropic-ai/sdk)
+* Contract Validation: Zod
+* Deployment: Vercel
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+* Node.js 18+
+* An Anthropic API key
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Local Setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Clone the repository:
+   git clone https://github.com/dustin-alipour/open-rcm.git
+   cd open-rcm
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Install dependencies:
+   npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Configure environment variables:
+   Create a .env.local file in the root directory:
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-## Learn More
+4. Run the local development server:
+   npm run dev
 
-To learn more about Next.js, take a look at the following resources:
+Open http://localhost:3000 to view the application.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT

@@ -31,6 +31,36 @@ export default function PreBillDefensePage() {
     message:
       "Click '⚡ Run Pre-Bill Agent' to parse clinical text via Claude Structured Outputs and validate against deterministic CMS/BCBS time rules.",
   });
+  const [isClaimQueued, setIsClaimQueued] = useState(false);
+
+  const SCENARIOS = [
+    {
+      label: "⚠️ 45-Min Downcode Risk",
+      cpt: "90837",
+      note: "Patient attended a 45-minute individual psychotherapy session. Discussed coping strategies for generalized anxiety, work-related stressors, and cognitive reframing. Patient demonstrated active engagement and reports moderate symptom reduction.",
+    },
+    {
+      label: "✅ 55-Min Audit-Ready",
+      cpt: "90837",
+      note: "Patient participated in a 55-minute individual psychotherapy session targeting panic symptoms. Implemented cognitive restructuring exercises and established exposure hierarchy. Medical necessity explicitly supported.",
+    },
+    {
+      label: "🛑 12-Min Clearinghouse Stop",
+      cpt: "90837",
+      note: "Brief 12-minute crisis triage and check-in with patient following acute workplace panic attack. Reviewed grounding techniques.",
+    },
+  ];
+
+  const loadScenario = (scenario: typeof SCENARIOS[0]) => {
+    setChartNote(scenario.note);
+    setCptCode(scenario.cpt);
+    setExtractedData(null);
+    setValidationAlert({
+      status: "warning",
+      message: "Scenario loaded. Click '⚡ Run Pre-Bill Agent' to execute extraction and compliance checks.",
+    });
+    setIsClaimQueued(false);
+  };
 
   const runAgenticExtraction = async () => {
     setIsAgentRunning(true);
@@ -79,7 +109,7 @@ export default function PreBillDefensePage() {
         <div className="flex items-center space-x-3">
           <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
           <h1 className="text-lg font-semibold tracking-tight text-white">
-            OpenRCM <span className="text-slate-400 font-normal">| Neuro-Symbolic Pre-Bill Defense</span>
+            OpenRCM <span className="text-slate-400 font-normal">| Pre-Bill Defense</span>
           </h1>
         </div>
         <div className="flex items-center space-x-2 text-xs text-slate-400">
@@ -93,8 +123,21 @@ export default function PreBillDefensePage() {
         <section className="flex-1 p-8 flex flex-col border-r border-slate-800 bg-slate-950">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Clinical Documentation</h2>
-              <p className="text-xs text-slate-500">Edit the note below (try changing minutes to 55 or 10) and run the agent</p>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                Clinical Documentation Scenarios
+              </h2>
+              <div className="flex items-center gap-2">
+                {SCENARIOS.map((scen, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => loadScenario(scen)}
+                    className="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                  >
+                    {scen.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <button
               onClick={runAgenticExtraction}
@@ -112,29 +155,56 @@ export default function PreBillDefensePage() {
             placeholder="Document session details here..."
           />
 
-          {/* Live Telemetry Panel: Displays Layer 2 Zod Output */}
-          {extractedData && (
-            <div className="mt-4 p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
-              <div className="text-slate-400 font-semibold uppercase tracking-wider mb-2 flex justify-between">
-                <span>Layer 2 Telemetry: Zod-Constrained LLM Extraction</span>
-                <span className="text-emerald-400 font-mono">Confidence: {extractedData.extractionConfidence}%</span>
+          {/* Live Telemetry Panel: Layer 2 Structural Contract */}
+          <div className="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
+            <div className="text-slate-400 font-semibold uppercase tracking-wider mb-3 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    extractedData ? "bg-emerald-400" : isAgentRunning ? "bg-amber-400 animate-ping" : "bg-slate-600"
+                  }`}
+                />
+                Schema Contract
+              </span>
+              <span className="text-slate-400 font-mono">
+                {extractedData ? (
+                  <span className="text-emerald-400 font-bold">Confidence: {extractedData.extractionConfidence}%</span>
+                ) : isAgentRunning ? (
+                  <span className="text-amber-400">Extracting...</span>
+                ) : (
+                  <span className="text-slate-600">Status: Awaiting Ingestion</span>
+                )}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 font-mono">
+              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <span className="text-slate-500 block text-[11px] mb-1">Extracted Duration</span>
+                <span className={extractedData ? "text-slate-200 font-bold" : "text-slate-600 italic"}>
+                  {extractedData
+                    ? extractedData.documentedMinutes !== null
+                      ? `${extractedData.documentedMinutes} mins`
+                      : "Missing from Note"
+                    : "-- mins"}
+                </span>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-slate-300 font-mono">
-                <div>
-                  <span className="text-slate-500 block">Extracted Duration:</span>
-                  {extractedData.documentedMinutes !== null ? `${extractedData.documentedMinutes} mins` : "None found"}
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Modality:</span>
-                  {extractedData.modality}
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Interventions Found:</span>
-                  {extractedData.clinicalInterventions.join(", ") || "None"}
-                </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <span className="text-slate-500 block text-[11px] mb-1">Parsed Modality</span>
+                <span className={extractedData ? "text-slate-200 font-bold" : "text-slate-600 italic"}>
+                  {extractedData ? extractedData.modality : "--"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <span className="text-slate-500 block text-[11px] mb-1">Clinical Interventions</span>
+                <span className={extractedData ? "text-slate-200 font-bold" : "text-slate-600 italic"}>
+                  {extractedData ? extractedData.clinicalInterventions.join(", ") || "None extracted" : "--"}
+                </span>
               </div>
             </div>
-          )}
+          </div>
+          
         </section>
 
         {/* Right Column: Concurrent Coding Side-Sheet */}
@@ -145,7 +215,7 @@ export default function PreBillDefensePage() {
                 Concurrent Encounter Billing
               </h2>
               <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-indigo-900/50 text-indigo-300 border border-indigo-700/50">
-                Layer 3: Deterministic Engine
+                Deterministic Engine
               </span>
             </div>
 
@@ -209,11 +279,22 @@ export default function PreBillDefensePage() {
 
           <div className="pt-6 border-t border-slate-800">
             <button
-              disabled={validationAlert?.status !== "ready"}
-              className="w-full py-2.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow"
+              disabled={validationAlert?.status !== "ready" || isClaimQueued}
+              onClick={() => setIsClaimQueued(true)}
+              className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-all shadow ${
+                isClaimQueued
+                  ? "bg-slate-800 border border-emerald-500/50 text-emerald-300 cursor-default"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              }`}
             >
-              Lock Encounter & Queue CMS-1500
+              {isClaimQueued ? "✓ Claim Queued for EDI 837 Batching" : "Lock Encounter & Queue CMS-1500"}
             </button>
+
+            {isClaimQueued && (
+              <p className="mt-2 text-[11px] text-center text-slate-500 font-mono">
+                Encounter locked. 0 audit flags detected. Ready for clearinghouse export.
+              </p>
+            )}
           </div>
         </aside>
       </div>
