@@ -62,6 +62,70 @@ export default function PreBillDefensePage() {
     setIsClaimQueued(false);
   };
 
+  const generateStedi837PJson = () => {
+    const cleanIcd = icd10Code.replace(".", "");
+    const fee = cptCode === "90837" ? "155.00" : cptCode === "90834" ? "113.00" : "75.00";
+
+    return {
+      controlNumber: "000000812",
+      tradingPartnerServiceId: "BCBS01",
+      submitter: {
+        organizationName: "OPENRCM BEHAVIORAL HEALTH GROUP",
+        contactInformation: { name: "BILLING DEPT", phoneNumber: "3035550199" },
+      },
+      receiver: { organizationName: "BLUE CROSS BLUE SHIELD" },
+      subscriber: {
+        memberId: "W998877665",
+        paymentResponsibilityLevelCode: "P",
+        firstName: "JANE",
+        lastName: "DOE",
+      },
+      providers: [
+        {
+          providerType: "BillingProvider",
+          npi: "1999999984",
+          employerId: "841234567",
+          organizationName: "OPENRCM BEHAVIORAL HEALTH GROUP",
+          taxonomyCode: "101YM0800X", // Mental Health Counselor
+        },
+      ],
+      claimInformation: {
+        claimFilingCode: "CI", // Commercial Insurance
+        patientControlNumber: "ENC-2026-8812",
+        claimChargeAmount: fee,
+        placeOfServiceCode: "11", // Office / Outpatient
+        claimFrequencyCode: "1", // Original Claim (Box 22)
+        signatureIndicator: "Y",
+        planParticipationCode: "A",
+        benefitsAssignmentCertificationIndicator: "Y",
+        releaseInformationCode: "Y",
+        healthCareCodeInformation: [
+          {
+            diagnosisTypeCode: "ABK", // Principal Diagnosis ICD-10-CM (Box 21)
+            diagnosisCode: cleanIcd,
+          },
+        ],
+        serviceLines: [
+          {
+            assignedNumber: "1",
+            professionalService: {
+              procedureIdentifier: "HC",
+              procedureCode: cptCode, // Box 24D Verified CPT
+              lineItemChargeAmount: fee,
+              measurementUnit: "UN",
+              serviceUnitCount: "1",
+              compositeDiagnosisCodePointers: {
+                diagnosisCodePointers: ["1"],
+              },
+            },
+            serviceDate: "20261105",
+            lineNoteText: `AUDITED_DURATION_${extractedData?.documentedMinutes ?? 0}_MIN_CONF_${extractedData?.extractionConfidence ?? 0}`,
+          },
+        ],
+      },
+    };
+  };
+
   const runAgenticExtraction = async () => {
     setIsAgentRunning(true);
     try {
@@ -287,13 +351,25 @@ export default function PreBillDefensePage() {
                   : "bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-30 disabled:cursor-not-allowed"
               }`}
             >
-              {isClaimQueued ? "✓ Claim Queued for EDI 837 Batching" : "Lock Encounter & Queue CMS-1500"}
+              {isClaimQueued
+                ? "✓ Claim Locked & 837P JSON Generated"
+                : "Lock Encounter & Generate 837P JSON"}
             </button>
 
             {isClaimQueued && (
-              <p className="mt-2 text-[11px] text-center text-slate-500 font-mono">
-                Encounter locked. 0 audit flags detected. Ready for clearinghouse export.
-              </p>
+              <div className="mt-3 rounded-lg bg-slate-950 border border-slate-800 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                    Clearinghouse Payload (837P JSON)
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Status: Claim Locked (Immutable)
+                  </span>
+                </div>
+                <pre className="text-[10px] font-mono text-slate-300 overflow-x-auto max-h-56 overflow-y-auto leading-relaxed">
+                  {JSON.stringify(generateStedi837PJson(), null, 2)}
+                </pre>
+              </div>
             )}
           </div>
         </aside>
