@@ -60,16 +60,20 @@ flowchart LR
     %% Deterministic Adjudication Layer
     subgraph Layer3 ["3. Deterministic Adjudication Engine"]
         G --> H{"CMS Time Threshold Rules"}
-        H -->|"< 53 Mins"| I>Audit Flag: Downcode to 90834]
-        H -->|">= 53 Mins"| J[Status: Ready]
-        I --> K{"Human-in-the-Loop Override"}
-        K --> J
+        H -->|"< 16 Mins"| STOP>Fatal Stop: Non-Billable Encounter]
+        H -->|">= 16 Mins"| EVAL{"Evaluate Documented Time vs Proposed CPT"}
+        
+        EVAL -->|"Criteria Met\n(90837 >=53m | 90834 38-52m)"| J[Status: Audit-Ready]
+        EVAL -->|"Time Deficit\n(e.g., 90837 with 38-52m)"| I>Audit Flag: Downcode Risk]
+        
+        I -->|"One-Click Remediation"| REM{"Apply Verified CPT 90834"}
+        REM -->|"CPT Updated"| J
     end
 
     %% Clearinghouse Output Layer
     subgraph Layer4 ["4. Clearinghouse Serialization"]
-        J --> L[Encounter Lock Engine]
-        L --> M[(837P JSON Payload)]
+        J --> K[Encounter Lock Engine]
+        K --> L[(837P JSON Payload)]
     end
 
     %% Node Styling Definitions
@@ -81,9 +85,9 @@ flowchart LR
 
     class A,B,C edgeStyle;
     class D,E,G aiStyle;
-    class F,I riskStyle;
-    class H,J,K ruleStyle;
-    class L,M outStyle;
+    class F,I,STOP riskStyle;
+    class H,EVAL,J,REM ruleStyle;
+    class K,L outStyle;
 ```
 
 ---
