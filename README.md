@@ -39,6 +39,55 @@ Rather than allowing a probabilistic LLM to make direct compliance and billing d
 
 ---
 
+## Architecture & Data Flow
+
+```mermaid
+flowchart LR
+    %% Direction and Ingestion Layer
+    subgraph Layer1 ["1. Ingestion & Edge Security"]
+        A([Clinician UI / Presets]) -->|"Raw Note Text"| B[app/api/scrub/route.ts]
+        B --> C[Regex PHI Stripper & 1k Char Clamp]
+    end
+
+    %% Probabilistic AI Layer
+    subgraph Layer2 ["2. Probabilistic Extraction Layer"]
+        C -->|"Sanitized Prompt"| D[Claude 3.5 Sonnet]
+        D --> E{Zod Contract Check}
+        E -.->|Drift / Malformed| F[Fallback / Log Error]
+        E -->|Strict JSON| G[(Structured Clinical Entity)]
+    end
+
+    %% Deterministic Adjudication Layer
+    subgraph Layer3 ["3. Deterministic Adjudication Engine"]
+        G --> H{"CMS Time Threshold Rules"}
+        H -->|"< 53 Mins"| I>Audit Flag: Downcode to 90834]
+        H -->|">= 53 Mins"| J[Status: Ready for 90837]
+        I --> K[Human-in-the-Loop Override]
+        K --> J
+    end
+
+    %% Clearinghouse Output Layer
+    subgraph Layer4 ["4. Clearinghouse Serialization"]
+        J --> L[Encounter Lock Engine]
+        L --> M[(837P JSON Payload)]
+    end
+
+    %% Node Styling Definitions
+    classDef edgeStyle fill:#0f172a,stroke:#334155,stroke-width:1px,color:#e2e8f0;
+    classDef aiStyle fill:#1e1b4b,stroke:#6366f1,stroke-width:1px,color:#e0e7ff;
+    classDef ruleStyle fill:#064e3b,stroke:#059669,stroke-width:1px,color:#ecfdf5;
+    classDef riskStyle fill:#450a0a,stroke:#dc2626,stroke-width:1px,color:#fef2f2;
+    classDef outStyle fill:#1e293b,stroke:#38bdf8,stroke-width:1px,color:#f0f9ff;
+
+    class A,B,C edgeStyle;
+    class D,E,G aiStyle;
+    class F,I riskStyle;
+    class H,J,K ruleStyle;
+    class L,M outStyle;
+```
+
+---
+
 ## Tech Stack
 
 * Framework: Next.js (App Router, TypeScript)
