@@ -61,8 +61,8 @@ flowchart LR
     subgraph Layer3 ["3. Deterministic Adjudication Engine"]
         G --> H{"CMS Time Threshold Rules"}
         H -->|"< 53 Mins"| I>Audit Flag: Downcode to 90834]
-        H -->|">= 53 Mins"| J[Status: Ready for 90837]
-        I --> K[Human-in-the-Loop Override]
+        H -->|">= 53 Mins"| J[Status: Ready]
+        I --> K{"Human-in-the-Loop Override"}
         K --> J
     end
 
