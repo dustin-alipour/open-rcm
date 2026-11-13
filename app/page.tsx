@@ -13,7 +13,7 @@ interface ExtractedClinicalData {
   documentedMinutes: number | null;
   modality: string;
   clinicalInterventions: string[];
-  medicalNecessitySupported: boolean;
+  symptomsDocumented: string[];
   extractionConfidence: number;
 }
 
@@ -160,7 +160,7 @@ export default function PreBillDefensePage() {
       setCptCode(newCpt);
       setValidationAlert({
         status: "ready",
-        message: `Human-in-the-Loop Override Applied: Downcoded to CPT ${newCpt} (${extractedData?.documentedMinutes} mins documented). Claim cleared for ANSI X12 837P batching.`,
+        message: `Human-in-the-Loop Override Applied: Downcoded to CPT ${newCpt} (${extractedData?.documentedMinutes} mins documented). Claim cleared for 837P JSON batching.`,
         recommendedCpt: newCpt,
         financialRiskDelta: 0,
       });

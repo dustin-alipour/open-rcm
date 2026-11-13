@@ -53,9 +53,9 @@ const ClinicalExtractionSchema = z.object({
   clinicalInterventions: z
     .array(z.string())
     .describe("Specific therapeutic interventions documented."),
-  medicalNecessitySupported: z
-    .boolean()
-    .describe("True if symptoms and interventions are both explicitly stated."),
+  symptomsDocumented: z
+    .array(z.string())
+    .describe("Symptoms or presenting problems explicitly named in the note. Empty array if none."),
   extractionConfidence: z
     .number()
     .describe("Confidence score from 0 to 100 on the clarity of the extraction."),
@@ -103,7 +103,7 @@ CRITICAL SECURITY INSTRUCTIONS:
     "documentedMinutes": number | null,
     "modality": "individual" | "family" | "group" | "unknown",
     "clinicalInterventions": string[],
-    "medicalNecessitySupported": boolean,
+    "symptomsDocumented": string[],
     "extractionConfidence": number
   }
 - No conversational filler, explanations, or markdown code fences.`,
@@ -138,6 +138,11 @@ CRITICAL SECURITY INSTRUCTIONS:
 
     const mins = extracted.documentedMinutes;
 
+    // Rule (not a model judgment): necessity counts as documented only if at least one symptom AND one intervention were extracted.
+    const necessityDocumented =
+      extracted.symptomsDocumented.length > 0 &&
+      extracted.clinicalInterventions.length > 0;
+
     if (mins === null) {
       status = "warning";
       message =
@@ -159,7 +164,7 @@ CRITICAL SECURITY INSTRUCTIONS:
         financialRiskDelta = 155;
         message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
       }
-    } else if (!extracted.medicalNecessitySupported) {
+    } else if (!necessityDocumented) {
       status = "warning";
       financialRiskDelta = 155;
       message =
