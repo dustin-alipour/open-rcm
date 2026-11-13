@@ -73,3 +73,33 @@ describe("adjudicate: missing documentation", () => {
     expect(r.status).toBe("warning");
   });
 });
+
+describe("adjudicate: 90834 time rules", () => {
+  it("passes 90834 with 45 minutes", () => {
+    const r = adjudicate({ ...base, documentedMinutes: 45 }, "90834");
+    expect(r.status).toBe("ready");
+    expect(r.recommendedCpt).toBe("90834");
+  });
+
+  it("passes 90834 at exactly 38 minutes (boundary)", () => {
+    expect(adjudicate({ ...base, documentedMinutes: 38 }, "90834").status).toBe("ready");
+  });
+
+  it("downcodes 90834 to 90832 at 37 minutes (boundary)", () => {
+    const r = adjudicate({ ...base, documentedMinutes: 37 }, "90834");
+    expect(r.status).toBe("warning");
+    expect(r.recommendedCpt).toBe("90832");
+    expect(r.financialRiskDelta).toBe(38);
+  });
+
+  it("downcodes 90834 to 90832 at 16 minutes (boundary)", () => {
+    expect(adjudicate({ ...base, documentedMinutes: 16 }, "90834").recommendedCpt).toBe("90832");
+  });
+
+  it("hard stops 90834 below 16 minutes", () => {
+    const r = adjudicate({ ...base, documentedMinutes: 15 }, "90834");
+    expect(r.status).toBe("error");
+    expect(r.recommendedCpt).toBe("90834");
+    expect(r.financialRiskDelta).toBe(113);
+  });
+});

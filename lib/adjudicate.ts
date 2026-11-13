@@ -56,6 +56,17 @@ export function adjudicate(
       financialRiskDelta = 155;
       message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
     }
+  } else if (proposedCpt === "90834" && mins < 38) {
+    if (mins >= 16) {
+      recommendedCpt = "90832";
+      status = "warning";
+      financialRiskDelta = 38;
+      message = `Deterministic Audit Flag: Proposed CPT 90834 requires ≥38 minutes. ${mins} documented minutes found. Downcode to 90832 required.`;
+    } else {
+      status = "error";
+      financialRiskDelta = 113;
+      message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
+    }
   } else if (!necessityDocumented) {
     status = "warning";
     financialRiskDelta = 155;
