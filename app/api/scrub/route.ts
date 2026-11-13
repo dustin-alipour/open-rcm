@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { adjudicate } from "@/lib/adjudicate";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -66,6 +67,16 @@ type ClinicalExtraction = z.infer<typeof ClinicalExtractionSchema>;
 
 export async function POST(request: Request) {
   try {
+        // Rate limit per client IP: 10 requests per minute.
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+    const limit = checkRateLimit(ip, 10, 60_000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: `Too many requests. Please try again in ${limit.retryAfterSeconds} seconds.` },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+      );
+    }
     const body = await request.json();
     const { chartNote, proposedCpt, proposedIcd10 } = body;
 
