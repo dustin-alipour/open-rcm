@@ -67,6 +67,10 @@ export function adjudicate(
       financialRiskDelta = 113;
       message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
     }
+  } else if (proposedCpt === "90832" && mins < 16) {
+    status = "error";
+    financialRiskDelta = 75;
+    message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
   } else if (!necessityDocumented) {
     status = "warning";
     financialRiskDelta = 155;

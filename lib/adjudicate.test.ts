@@ -103,3 +103,26 @@ describe("adjudicate: 90834 time rules", () => {
     expect(r.financialRiskDelta).toBe(113);
   });
 });
+
+describe("adjudicate: 90832 time rules", () => {
+  it("passes 90832 with 30 minutes", () => {
+    const r = adjudicate({ ...base, documentedMinutes: 30 }, "90832");
+    expect(r.status).toBe("ready");
+    expect(r.recommendedCpt).toBe("90832");
+  });
+
+  it("passes 90832 at exactly 16 minutes (boundary)", () => {
+    expect(adjudicate({ ...base, documentedMinutes: 16 }, "90832").status).toBe("ready");
+  });
+
+  it("hard stops 90832 at 15 minutes (boundary)", () => {
+    const r = adjudicate({ ...base, documentedMinutes: 15 }, "90832");
+    expect(r.status).toBe("error");
+    expect(r.recommendedCpt).toBe("90832");
+    expect(r.financialRiskDelta).toBe(75);
+  });
+
+  it("hard stops 90832 at 10 minutes", () => {
+    expect(adjudicate({ ...base, documentedMinutes: 10 }, "90832").status).toBe("error");
+  });
+});
