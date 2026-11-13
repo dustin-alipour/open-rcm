@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { adjudicate } from "@/lib/adjudicate";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -130,59 +131,12 @@ CRITICAL SECURITY INSTRUCTIONS:
     const rawJson = JSON.parse(cleanedJsonText);
     const extracted: ClinicalExtraction = ClinicalExtractionSchema.parse(rawJson);
 
-    // LAYER 3: Deterministic Payer Rules Engine
-    let recommendedCpt = proposedCpt;
-    let status: "ready" | "warning" | "error" = "ready";
-    let message = "All deterministic clearinghouse checks passed.";
-    let financialRiskDelta = 0;
-
-    const mins = extracted.documentedMinutes;
-
-    // Rule (not a model judgment): necessity counts as documented only if at least one symptom AND one intervention were extracted.
-    const necessityDocumented =
-      extracted.symptomsDocumented.length > 0 &&
-      extracted.clinicalInterventions.length > 0;
-
-    if (mins === null) {
-      status = "warning";
-      message =
-        "Deterministic Audit Flag: No explicit session duration found in note. Time-based psychotherapy codes (90832/90834/90837) require explicit minute documentation.";
-      financialRiskDelta = 155;
-    } else if (proposedCpt === "90837" && mins < 53) {
-      if (mins >= 38) {
-        recommendedCpt = "90834";
-        status = "warning";
-        financialRiskDelta = 42;
-        message = `Deterministic Audit Flag: Proposed CPT 90837 requires ≥53 minutes. Claude extracted ${mins} documented minutes. Auto-downcode to 90834 recommended to prevent clawback (Risk: -$${financialRiskDelta}).`;
-      } else if (mins >= 16) {
-        recommendedCpt = "90832";
-        status = "warning";
-        financialRiskDelta = 80;
-        message = `Deterministic Audit Flag: Proposed CPT 90837 requires ≥53 minutes. Claude extracted ${mins} documented minutes. Downcode to 90832 required.`;
-      } else {
-        status = "error";
-        financialRiskDelta = 155;
-        message = `Hard Stop: Documented duration (${mins} min) is below the 16-minute CMS minimum threshold for billable psychotherapy.`;
-      }
-    } else if (!necessityDocumented) {
-      status = "warning";
-      financialRiskDelta = 155;
-      message =
-        "Medical Necessity Alert: Note lacks documented therapeutic interventions or symptom response required by commercial payers.";
-    } else {
-      status = "ready";
-      message = `Guardrail Passed: Documented ${mins} minutes and ${extracted.clinicalInterventions.length} intervention(s) satisfy criteria for CPT ${proposedCpt}.`;
-    }
+    // LAYER 3: Deterministic Payer Rules Engine (see lib/adjudicate.ts)
+    const adjudication = adjudicate(extracted, proposedCpt);
 
     return NextResponse.json({
       extracted,
-      adjudication: {
-        status,
-        recommendedCpt,
-        message,
-        financialRiskDelta,
-        proposedIcd10,
-      },
+      adjudication: { ...adjudication, proposedIcd10 },
     });
   } catch (error: any) {
     console.error("Scrub API Error:", error);
