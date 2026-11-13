@@ -4,6 +4,16 @@ An open-source prototype designed to eliminate outpatient behavioral health clai
 
 OpenRCM pairs LLM-powered clinical extraction with deterministic CMS clearinghouse rules to identify coding discrepancies, enforce minimum time thresholds, and provide human-in-the-loop remediation.
 
+> **Demo only.** This is a prototype for learning and demonstration. Use synthetic notes only. Do not enter real patient information (PHI). Live demo: https://open-rcm.vercel.app
+
+### Scope and limitations
+
+* Checks one thing: whether the documented session minutes support the proposed psychotherapy CPT code (90832, 90834, 90837) using standard CPT time ranges.
+* Does not model payer-specific rules, modifiers, add-on codes, place of service, or telehealth requirements.
+* Dollar amounts shown in the UI are illustrative, not a payer fee schedule.
+* PHI redaction is best-effort pattern matching and will miss things such as bare first names.
+* The 837P output is a sample payload built in the browser. Nothing is submitted to a clearinghouse.
+
 ---
 
 ## The Problem: Downcode & Clawback Risk in Outpatient Billing
@@ -23,14 +33,14 @@ When clinicians select 90837 for a 45-minute session, clearinghouses flag the cl
 Rather than allowing a probabilistic LLM to make direct compliance and billing decisions, OpenRCM decouples extraction from adjudication:
 
 1. Server-Side De-Identification & Guardrails:
-   * Redacts common PHI/PII patterns before requests leave the server.
+   * Best-effort pattern redaction of common identifiers (SSNs, phone numbers, emails, dates, record and member IDs, street addresses, and names that follow a title or label such as "Ms." or "Patient:") before requests leave the server. This reduces exposure but does not guarantee de-identification.
    * Clamps payload size to prevent compute drain.
    * Encapsulates raw input in XML tags to guard against prompt injection.
 
 2. Structured Extraction (Claude + Zod):
    * Extracts session duration, modality, and clinical interventions.
-   * Enforces a strict JSON schema contract to eliminate conversational filler.
-   * Returns a confidence score for extraction quality.
+   * Prompts the model to return JSON only, then validates the response against a Zod schema before any billing logic runs. Malformed output is rejected.
+   * Includes a model-reported confidence score for extraction quality.
 
 3. Deterministic Payer Engine (TypeScript):
    * Hard-coded CMS and commercial time rules calculate audit readiness.
@@ -51,7 +61,7 @@ flowchart LR
 
     %% Probabilistic AI Layer
     subgraph Layer2 ["2. Probabilistic Extraction Layer"]
-        C -->|"Sanitized Prompt"| D[Claude 3.5 Sonnet]
+        C -->|"Sanitized Prompt"| D[Claude 5.5 Haiku]
         D --> E{Zod Contract Check}
         E -.->|Drift / Malformed| F[Fallback / Log Error]
         E -->|Strict JSON| G[(Structured Clinical Entity)]

@@ -10,10 +10,35 @@ const anthropic = new Anthropic({
 const MAX_NOTE_LENGTH = 1000;
 
 // Layer 1: PHI Scrubbing Guardrail
+// Each entry is [pattern, replacement label]. Order matters: more specific patterns run first.
+const PHI_PATTERNS: [RegExp, string][] = [
+  // Social Security numbers
+  [/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_SSN]"],
+  // Phone numbers
+  [/(?:\+?1[\s.-])?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g, "[REDACTED_PHONE]"],
+  // Numeric dates: 04/12/1988, 4-12-88, 1988-04-12
+  [/\b(?:\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/g, "[REDACTED_DATE]"],
+  // Written dates: March 3, 2026
+  [/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b/gi, "[REDACTED_DATE]"],
+  // Email addresses, URLs, IP addresses
+  [/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, "[REDACTED_EMAIL]"],
+  [/\bhttps?:\/\/\S+/gi, "[REDACTED_URL]"],
+  [/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, "[REDACTED_IP]"],
+  // Labeled identifiers: MRN: AB12345, Member ID 998877, DOB ...
+  [/\b(?:MRN|Medical Record(?: Number| No\.?)?|Member ID|Policy(?: Number| No\.?)?|DOB|Date of Birth)\s*[:#]?\s*[\w-]+/gi, "[REDACTED_ID]"],
+  // Street addresses: 555 West 7th Avenue
+  [/\b\d{1,5}\s+(?:[A-Z0-9][A-Za-z0-9]*\s+){1,3}(?:Street|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Lane|Ln|Court|Place|Way)\b\.?/g, "[REDACTED_ADDRESS]"],
+  // Names after a title: Ms. Lopez, Dr. Patel
+  [/\b(?:Mr|Mrs|Ms|Miss|Mx|Dr)\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g, "[REDACTED_NAME]"],
+  // Names after a label: Patient: Maria Lopez
+  [/\b(?:Patient(?: Name)?|Client(?: Name)?|Name)\s*:\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/g, "[REDACTED_NAME]"],
+];
+
 function redactPHI(rawNote: string): string {
-  return rawNote
-    .replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED_SSN]")
-    .replace(/\b\d{2}\/\d{2}\/\d{4}\b/g, "[REDACTED_DATE]");
+  return PHI_PATTERNS.reduce(
+    (text, [pattern, label]) => text.replace(pattern, label),
+    rawNote
+  );
 }
 
 // Layer 2: Zod Schema Contract

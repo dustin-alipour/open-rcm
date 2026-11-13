@@ -29,7 +29,7 @@ export default function PreBillDefensePage() {
   const [validationAlert, setValidationAlert] = useState<ClaimValidation | null>({
     status: "warning",
     message:
-      "Click '⚡ Run Pre-Bill Agent' to parse clinical text via Claude Structured Outputs and validate against deterministic CMS/BCBS time rules.",
+      "Click '⚡ Run Pre-Bill Agent' to extract session details with Claude, validate them against a Zod schema, and check them against deterministic CPT time rules.",
   });
   const [isClaimQueued, setIsClaimQueued] = useState(false);
 
@@ -218,6 +218,10 @@ export default function PreBillDefensePage() {
             className="flex-1 w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-mono"
             placeholder="Document session details here..."
           />
+
+          <p className="mt-2 text-xs text-amber-400/80">
+            Demo only. Use synthetic notes. Do not enter real patient information (PHI).
+          </p>
 
           {/* Live Telemetry Panel: Layer 2 Structural Contract */}
           <div className="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 text-xs">
